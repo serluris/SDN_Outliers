@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-# _*_ coding: utf-8 _*_
+#!/usr/bin/python2.7
+# -*- coding=utf-8 -*- pyversions=2.6+,3.3+
+
 import os
 import netaddr
 import builtins
@@ -22,6 +23,7 @@ dq1 = deque(maxlen=5)
 dq2 = deque(maxlen=5)
 dq3 = deque(maxlen=5)
 dt = deque(maxlen=5)
+ddt = deque(maxlen=5)
 d1 = deque(maxlen=5)
 d2 = deque(maxlen=5)
 d3 = deque(maxlen=5)
@@ -29,7 +31,6 @@ d3 = deque(maxlen=5)
 
 
 class SimpleMonitor13(simple_switch_13.SimpleSwitch13):
-
     def __init__(self, *args, **kwargs):
         super(SimpleMonitor13, self).__init__(*args, **kwargs)
         self.datapaths = {}
@@ -71,52 +72,54 @@ class SimpleMonitor13(simple_switch_13.SimpleSwitch13):
         msg = ev.msg
         datapath = msg.datapath
         
-    # Extrair estatísticas  do switch oara configurar limiar    
+    # Extrair estatísticas  do switch e configurar limiar    
         status = list(zip(*ev.msg.body))
         ports = list(zip(*ev.msg.body))[0]
         for i in [i for i,p in enumerate(ports) if p == 1]:
             dq1.append(status[4][i])
-            dt.append(status[13][i])            
+            dt.append(status[13][i])
+        for i2 in [i2 for i2,p in enumerate(ports) if p == 2]:
+            dq2.append(status[4][i])            
             
-            if len(dq3) > 4:
-                delta3 = dq3[-1] - dq3[-2]
-                deltat = dt[-1] - dt[-2]
-                t = [time.strftime("%Y%m%d%H%M%S")]
-                bw = t + (int((delta1 * 8)/ (deltat)))
+            if len(dq1) > 4:
+                delta1 = dq1[-1] - dq1[-2]
+                delta2 = dq2[-1] - dq2[-2]
+                deltat = dt[-1] - dt[-2]  
+               # t = time.strftime("%Y%m%d%H%M%S")
+                bw = int((delta1 * 8)/ (deltat))
                 d1.append(bw)
                 d = np.asarray(d1)
-                with open('bw.txt', 'a') as f: np.savetxt(f, np.c_[bw], fmt='%9d', delimiter=' ', newline=os.linesep)
-                with open('d.txt', 'a') as f: np.savetxt(f, np.c_[d], fmt='%9d', delimiter=' ', newline=os.linesep)
-                mmp_weights = [1, 2, 3, 4, 5]
-                mmp1 = round(ws.weighted_mean(d1, weights=mmp_weights))
+                bw2 = int((delta2 * 8)/ (deltat))
+                d2.append(bw2)
+                d_2 = np.asarray(d2)
+                print('bw', bw, 'bw2', bw2, 'd', d, 'deltat', deltat)
+                with open('wma/bw_wma.txt', 'a') as f: np.savetxt(f, np.c_[bw], fmt='%9d', delimiter=' ', newline=os.linesep)
+                with open('wma/d_wma.txt', 'a') as f: np.savetxt(f, np.c_[d], fmt='%9d', delimiter=' ', newline=os.linesep)
+                with open('wma/bw2_wma.txt', 'a') as f: np.savetxt(f, np.c_[bw], fmt='%9d', delimiter=' ', newline=os.linesep)
+                with open('wma/d2_wma.txt', 'a') as f: np.savetxt(f, np.c_[d_2], fmt='%9d', delimiter=' ', newline=os.linesep)
                 np_mm = np.average(d1)
-                np_var = np.var(d1)
-                np_std = np.std(d1)
+                np_var = np.var(d1, ddof=1)
+                np_std = np.std(d1, ddof=1)
                 np_error = stats.tsem(d1)
-                print('***************************************************', d)                
-                print('mm_np', np_mm, 'np_var', np_var, 'np_std', np_std, 'np_error', np_error)
-    # Avaliação estatística 'real-time'                
-                #mv_variance = d.var(d) # variância populacional
-                #mv_desviop = d.std(d) # desvio padrão amostral
-                
-                mv_variance = round(st.pvariance(d1),5) # variância populacional
-                mv_desviop = round(st.pstdev(d1), 5) # desvio padrão amostral
-                mv_error = round(((mv_desviop) / (10 ** 0.5)), 5)
-                error_percent = round(((mv_error) / 10000000), 5)
-               
-                print('******************************************Bandwidth =', bw)
-                print('mmp1 =', mmp1, 'pvariance =', mv_variance,'desviop =', 
-                      mv_desviop, 'error =', mv_error, 'error_percent =', error_percent)
+                np_1st = np.quantile(d, 0.25, axis=0)
+                np_2nd = np.quantile(d, 0.50, axis=0)
+                np_3rd = np.quantile(d, 0.75, axis=0)
+                print('** 1st', np_1st, 'np_2nd', np_2nd, 'np_3rd', np_3rd) 
+                print('***************************************************  d=', d)                
+                print('np_mm', np_mm, 'np_var', np_var, 'np_std', np_std, 'np_error', np_error)               
+                print('##########***************************Bandwidth =', bw)
+
     # Up/Down porta do servidor secundário
                 ifname = 's1-eth2'
                 ofp = datapath.ofproto
                 ofp_parser = datapath.ofproto_parser
                 port_no = 2
                 addr_port = open('/sys/class/net/%s/address' % ifname).read()
+                print(addr_port)
                 config = 0
-                mask = (ofp.OFPPC_NO_FWD)
-                if (bw <= 800000000):
-                    config = ofp.OFPPC_NO_FWD
+                mask = (ofp.OFPPC_PORT_DOWN)
+                if (np_mm <= 400000000):
+                    config = ofp.OFPPC_PORT_DOWN
                     req_down = ofp_parser.OFPPortMod(datapath, port_no, addr_port, 
                                                      config, mask)
                     datapath.send_msg(req_down)# traffego apenas porta primaria
