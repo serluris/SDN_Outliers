@@ -118,7 +118,7 @@ class SimpleMonitor13(simple_switch_13.SimpleSwitch13):
                 print(addr_port)
                 config = 0
                 mask = (ofp.OFPPC_PORT_DOWN)
-                if (np_mm <= 400000000):
+                if (bw <= 800000000):
                     config = ofp.OFPPC_PORT_DOWN
                     req_down = ofp_parser.OFPPortMod(datapath, port_no, addr_port, 
                                                      config, mask)
