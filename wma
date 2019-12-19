@@ -19,14 +19,14 @@ from ryu.controller.handler import MAIN_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.lib import hub
 
-dq1 = deque(maxlen=5)
-dq2 = deque(maxlen=5)
-dq3 = deque(maxlen=5)
-dt = deque(maxlen=5)
-ddt = deque(maxlen=5)
-d1 = deque(maxlen=5)
-d2 = deque(maxlen=5)
-d3 = deque(maxlen=5)
+dq1 = deque(maxlen=10)
+dq2 = deque(maxlen=10)
+dq3 = deque(maxlen=10)
+dt = deque(maxlen=10)
+ddt = deque(maxlen=10)
+d1 = deque(maxlen=10)
+d2 = deque(maxlen=10)
+d3 = deque(maxlen=10)
 
 
 
